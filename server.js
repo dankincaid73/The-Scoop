@@ -51,6 +51,7 @@ function getUser(url, request) {
   // const user = database.users[username];
   const response = {};
   response.status = 200;
+  // For Testing
   if ('Ted' in database.users) {
     response.body = {"users": database.users, "articles":database.articles,
     "comments": database.comments};
@@ -276,12 +277,12 @@ function createComment(url, request) {
     // Parse data from the received POST object to create
     // a new Comment object
     const comment = {
-    id: database.nextCommentId++,
-    body: request.body.body,
-    username: request.body.username,
-    articleid: request.body.articleid,
-    upvotedby: [],
-    downvotedby: []
+      id: database.nextCommentId++,
+      body: request.body.body,
+      username: request.body.username,
+      articleid: request.body.articleid,
+      upvotedby: [],
+      downvotedby: []
     };
     // Create a new comment with the given id
     database.comments[comment.id] = comment;
@@ -301,12 +302,60 @@ function createComment(url, request) {
   return response;
 };
 
-function updateComment() {
-
+// Update Comments
+function updateComment(url, request) {
+  // Retrieve the id from the url
+  const id = Number(url.split('/').filter(segment => segment)[1]);
+  // Retrieve the correct comment
+  const savedComment = database.comments[id];
+  const response = {};
+  // Check to see if id exists, that there is a change to the comment
+  // And that the user exists if updated
+  if (!id || !request.body.body || !database.users[request.body.username]) {
+    // If not return a status code of 400
+    response.status = 400;
+  } else if (!savedComment) {
+    // If a comment with the given id doesn't exist
+    // Return a status code of 404
+    response.status = 400;
+  } else {
+    // Save updates, return updated comment and status code of 200
+    savedComment.body = request.body.body || savedComment.body;
+    savedComment.username = request.body.username || savedComment.username;
+    response.body = {comment: savedComment};
+    response.status = 200;
+  }
+  return response;
 };
 
-function deleteComment() {
+// Delete a comment
+function deleteComment(url, request) {
+  // Retrieve the id from the url
+  const id = Number(url.split('/').filter(segment => segment)[1]);
+  // Retrieve the correct comment
+  const savedComment = database.comments[id];
+  const response = {};
 
+  // If the Comment exists
+  if (savedComment) {
+    // Delete the comment from the comments object
+    delete database.comments[id];
+    // Set the Articles commentIds array to a variable
+    const articleCommentIds = database.articles[savedComment.articleid].commentIds;
+    // Remove the comment Id from the Article's commentIds array
+    articleCommentIds.splice(articleCommentIds.indexOf(id), 1);
+    // Set the Users commentIds array to a variable
+    const userCommentIds = database.users[savedComment.username].commentIds;
+    // Remove the comment Id from the User's commentIds array
+    userCommentIds.splice(userCommentIds.indexOf(id), 1);
+    // Return a status code of 400
+    response.status = 204;
+  } else {
+    // If a comment with the given id doesn't exist
+    // Return a status code of 400
+    response.status = 404;
+  }
+  return response;
 };
 
 function upvoteComment(){
