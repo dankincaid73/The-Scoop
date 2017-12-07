@@ -266,32 +266,36 @@ function downvote(item, username) {
 
 // Function to create a Comment
 function createComment(url, request) {
+  // Set request body to a variable
+  const commentInfo = request.body;
   const response = {};
   // Make sure there is a request body
   // That all required fields exist
   // And the username and article exist
-  if (request.body && request.body.username
-  && request.body.articleid && request.body.body
-  && database.users[request.body.username]
-  && database.articles[request.body.articleid]) {
+  if(commentInfo && commentInfo.hasOwnProperty('comment')
+     && (commentInfo.comment.body)
+     && database.articles[commentInfo.comment.articleId]
+     && database.users[commentInfo.comment.username]){
     // Parse data from the received POST object to create
     // a new Comment object
-    const comment = {
-      id: database.nextCommentId++,
-      body: request.body.body,
-      username: request.body.username,
-      articleid: request.body.articleid,
-      upvotedby: [],
-      downvotedby: []
+    const newComment = {
+      id: database.nextCommentId,
+      body: commentInfo.comment.body,
+      username: commentInfo.comment.username,
+      articleId: commentInfo.comment.articleId,
+      upvotedBy:[],
+      downvotedBy:[]
     };
+    // Increment next comment id
+    database.nextCommentId++;
     // Create a new comment with the given id
-    database.comments[comment.id] = comment;
+    database.comments[newComment.id] = newComment;
     // Add Comment Id to user and article
-    database.users[request.body.username].commentIds.push(comment.id);
-    database.articles[request.body.articleid].commentIds.push(comment.id);
+    database.users[newComment.username].commentIds.push(newComment.id);
+    database.articles[newComment.articleId].commentIds.push(newComment.id);
     // Send a response with a status code and the body
     // of the created Comment
-    response.body = {comment: comment};
+    response.body = {comment: newComment};
     response.status = 201;
   } else {
     // If the request body is missing or missing a
@@ -308,20 +312,21 @@ function updateComment(url, request) {
   const id = Number(url.split('/').filter(segment => segment)[1]);
   // Retrieve the correct comment
   const savedComment = database.comments[id];
+  // Set the request body to a variable
+  const updateComment = request.body && request.body.comment;
   const response = {};
   // Check to see if id exists, that there is a change to the comment
   // And that the user exists if updated
-  if (!id || !request.body.body || !database.users[request.body.username]) {
-    // If not return a status code of 400
-    response.status = 400;
-  } else if (!savedComment) {
-    // If a comment with the given id doesn't exist
+  if (!savedComment) {
+    // If the comment to update doesn't exist return a 404 status code
+    response.status = 404;
+  } else if (!updateComment || !updateComment.body) {
+    // If a comment update doesn't exist or doesn't have a body
     // Return a status code of 404
     response.status = 400;
   } else {
     // Save updates, return updated comment and status code of 200
-    savedComment.body = request.body.body || savedComment.body;
-    savedComment.username = request.body.username || savedComment.username;
+    savedComment.body = updateComment.body;
     response.body = {comment: savedComment};
     response.status = 200;
   }
@@ -329,42 +334,90 @@ function updateComment(url, request) {
 };
 
 // Delete a comment
-function deleteComment(url, request) {
+function deleteComment(url){
   // Retrieve the id from the url
   const id = Number(url.split('/').filter(segment => segment)[1]);
   // Retrieve the correct comment
   const savedComment = database.comments[id];
   const response = {};
 
-  // If the Comment exists
-  if (savedComment) {
-    // Delete the comment from the comments object
-    delete database.comments[id];
+  // If the id is not set or the comment to delete
+  // Doesn't exist, return a 404 status code
+  if (!id || !savedComment){
+    response.status = 404;
+  } else {
     // Set the Articles commentIds array to a variable
-    const articleCommentIds = database.articles[savedComment.articleid].commentIds;
+    const articleCommentId = database.articles[savedComment.articleId].commentIds;
     // Remove the comment Id from the Article's commentIds array
-    articleCommentIds.splice(articleCommentIds.indexOf(id), 1);
+    articleCommentId.splice(articleCommentId.indexOf(id), 1);
     // Set the Users commentIds array to a variable
     const userCommentIds = database.users[savedComment.username].commentIds;
     // Remove the comment Id from the User's commentIds array
     userCommentIds.splice(userCommentIds.indexOf(id), 1);
-    // Return a status code of 400
+    // Set the comment to null
+    database.comments[id] = null;
+
+    // To delete the comment use the below statusCode
+    // But the test was checking for a null object not undefined
+    // delete database.comments[id];
+
+    // Return a status code of 204
     response.status = 204;
+  }
+  return response;
+}
+
+// Upvote a comment
+function upvoteComment(url, request){
+  // Retrieve the id from the url
+  const id = Number(url.split('/').filter(segment => segment)[1]);
+  // Save request username to variable
+  const username = request.body && request.body.username;
+  // Retrieve the correct comment
+  let savedComment = database.comments[id];
+  const response = {};
+
+  //If the Comment exists and the username exists
+  if (savedComment && database.users[username]) {
+    // Pass comment and username to the upvote function
+    savedComment = upvote(savedComment, username);
+    // Return the comment and a status code of 200
+    response.body = {comment: savedComment};
+    response.status = 200;
   } else {
-    // If a comment with the given id doesn't exist
+    // If the Comment or username  don't exist
     // Return a status code of 400
-    response.status = 404;
+    response.status = 400;
   }
   return response;
 };
 
-function upvoteComment(){
+// Downvote a comment
+function downvoteComment(url, request) {
+  // Retrieve the id from the url
+  const id = Number(url.split('/').filter(segment => segment)[1]);
+  // Save request username to variable
+  const username = request.body && request.body.username;
+  // Retrieve the correct comment
+  let savedComment = database.comments[id];
+  const response = {};
 
+  //If the Comment exists and the username exists
+  if (savedComment && database.users[username]) {
+    // Pass comment and username to the downvote function
+    savedComment = downvote(savedComment, username);
+    // Return the comment and a status code of 200
+    response.body = {comment: savedComment};
+    response.status = 200;
+  } else {
+    // If the Comment or username  don't exist
+    // Return a status code of 400
+    response.status = 400;
+  }
+  return response;
 };
 
-function downvoteComment() {
 
-};
 // Write all code above this line.
 
 const http = require('http');
