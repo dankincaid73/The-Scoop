@@ -2,7 +2,7 @@
 let database = {
   users: {},
   articles: {},
-  nextArticleId: 1,
+  nextarticleId: 1,
   // Comments Object
   comments: {},
   nextCommentId: 1
@@ -143,7 +143,7 @@ function createArticle(url, request) {
   if (requestArticle && requestArticle.title && requestArticle.url &&
       requestArticle.username && database.users[requestArticle.username]) {
     const article = {
-      id: database.nextArticleId++,
+      id: database.nextarticleId++,
       title: requestArticle.title,
       url: requestArticle.url,
       username: requestArticle.username,
@@ -198,8 +198,8 @@ function deleteArticle(url, request) {
       const userCommentIds = database.users[comment.username].commentIds;
       userCommentIds.splice(userCommentIds.indexOf(id), 1);
     });
-    const userArticleIds = database.users[savedArticle.username].articleIds;
-    userArticleIds.splice(userArticleIds.indexOf(id), 1);
+    const userarticleIds = database.users[savedArticle.username].articleIds;
+    userarticleIds.splice(userarticleIds.indexOf(id), 1);
     response.status = 204;
   } else {
     response.status = 400;
@@ -267,22 +267,22 @@ function downvote(item, username) {
 // Function to create a Comment
 function createComment(url, request) {
   // Set request body to a variable
-  const commentInfo = request.body;
+  const createComment  = request.body &&  request.body.comment;
   const response = {};
   // Make sure there is a request body
   // That all required fields exist
   // And the username and article exist
-  if(commentInfo && commentInfo.hasOwnProperty('comment')
-     && (commentInfo.comment.body)
-     && database.articles[commentInfo.comment.articleId]
-     && database.users[commentInfo.comment.username]){
+  if(createComment && createComment.body &&
+    createComment.username &&
+      database.users[createComment.username] && createComment.articleId &&
+      database.articles[createComment.articleId]){
     // Parse data from the received POST object to create
     // a new Comment object
     const newComment = {
       id: database.nextCommentId,
-      body: commentInfo.comment.body,
-      username: commentInfo.comment.username,
-      articleId: commentInfo.comment.articleId,
+      body: createComment.body,
+      username: createComment.username,
+      articleId: createComment.articleId,
       upvotedBy:[],
       downvotedBy:[]
     };
