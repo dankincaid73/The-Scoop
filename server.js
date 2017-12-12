@@ -1,3 +1,7 @@
+// js-yaml library for saving/loading database to/from YAML file
+const yaml = require('js-yaml');
+const fs = require('fs');
+
 // database is let instead of const to allow us to modify it in test.js
 let database = {
   users: {},
@@ -47,33 +51,26 @@ const routes = {
 };
 
 function getUser(url, request) {
-  // const username = url.split('/').filter(segment => segment)[1];
-  // const user = database.users[username];
+  const username = url.split('/').filter(segment => segment)[1];
+  const user = database.users[username];
   const response = {};
-  response.status = 200;
-  // For Testing
-  if ('Ted' in database.users) {
-    response.body = {"users": database.users, "articles":database.articles,
-    "comments": database.comments};
+
+  if (user) {
+    const userArticles = user.articleIds.map(
+        articleId => database.articles[articleId]);
+    const userComments = user.commentIds.map(
+        commentId => database.comments[commentId]);
+    response.body = {
+      user: user,
+      userArticles: userArticles,
+      userComments: userComments
+    };
+    response.status = 200;
+  } else if (username) {
+    response.status = 404;
   } else {
-    response.body = {"message" : "Nope"}
+    response.status = 400;
   }
-  // if (user) {
-  //   const userArticles = user.articleIds.map(
-  //       articleId => database.articles[articleId]);
-  //   const userComments = user.commentIds.map(
-  //       commentId => database.comments[commentId]);
-  //   response.body = {
-  //     user: user,
-  //     userArticles: userArticles,
-  //     userComments: userComments
-  //   };
-  //   response.status = 200;
-  // } else if (username) {
-  //   response.status = 404;
-  // } else {
-  //   response.status = 400;
-  // }
 
   return response;
 }
@@ -272,10 +269,9 @@ function createComment(url, request) {
   // Make sure there is a request body
   // That all required fields exist
   // And the username and article exist
-  if(createComment && createComment.body &&
-    createComment.username &&
-      database.users[createComment.username] && createComment.articleId &&
-      database.articles[createComment.articleId]){
+  if(createComment && createComment.body && createComment.username &&
+     database.users[createComment.username] && createComment.articleId &&
+     database.articles[createComment.articleId]){
     // Parse data from the received POST object to create
     // a new Comment object
     const newComment = {
@@ -357,7 +353,7 @@ function deleteComment(url){
     // Set the comment to null
     database.comments[id] = null;
 
-    // To delete the comment use the below statusCode
+    // To delete the comment entirely use the below code
     // But the test was checking for a null object not undefined
     // delete database.comments[id];
 
@@ -417,6 +413,26 @@ function downvoteComment(url, request) {
   return response;
 };
 
+// Use js-yaml to load a yaml file containing our database
+function loadDatabase() {
+  try {
+    if (fs.exists('savedDatabase.yml')) {
+      return yaml.safeLoad(fs.readFileSync('savedDatabase.yml', 'utf8'));
+    }
+  } catch (e) {
+    console.log(e);
+  }
+  return false;
+}
+
+// Use js-yaml to save a yaml file containing our database
+function saveDatabase() {
+  try {
+    fs.writeFileSync('savedDatabase.yml', yaml.safeDump(database), 'utf8');
+  } catch (e) {
+    console.log(e);
+  }
+}
 
 // Write all code above this line.
 
